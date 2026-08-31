@@ -112,6 +112,26 @@ python3 app.py
 
 如果要在局域网内给其他设备访问，使用本机局域网 IP 对应的 HTTPS 地址。
 
+## 部署到 Vercel
+
+仓库现在已补齐 Vercel 需要的基础文件：
+
+- `vercel.json`
+- `requirements.txt`
+- `app.py` 中的 Vercel 运行时兼容入口
+
+直接把 GitHub 仓库导入 Vercel 即可。
+
+部署时还需要在 Vercel 项目里配置环境变量：
+
+- `ARK_API_KEY`
+
+说明：
+
+- 单人创作主流程可直接部署使用
+- 双人模式在 Vercel 上会自动降级为轮询同步，不依赖本地 WebSocket 端口
+- `data/` 下的保存内容在 Vercel 属于运行时临时数据，不适合当长期存储使用
+
 ## 项目结构
 
 ```text

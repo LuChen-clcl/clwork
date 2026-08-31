@@ -4,7 +4,6 @@ import ssl
 import threading
 import mimetypes
 import os
-import threading
 import uuid
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
@@ -17,14 +16,22 @@ from urllib import error, request
 from urllib.parse import parse_qs, urlparse
 
 from bg_remove import remove_background_from_data_url
-from websockets.exceptions import ConnectionClosed
-from websockets.sync.server import Request, ServerConnection, serve
+try:
+    from websockets.exceptions import ConnectionClosed
+    from websockets.sync.server import Request, ServerConnection, serve
+except ImportError:
+    ConnectionClosed = Exception
+    Request = Any
+    ServerConnection = Any
+    serve = None
 
 
 ROOT = Path(__file__).resolve().parent
 STATIC_DIR = ROOT / "static"
-DATA_DIR = ROOT / "data"
+SEED_DATA_DIR = ROOT / "data"
 CERTS_DIR = ROOT / "certs"
+IS_VERCEL = bool(os.environ.get("VERCEL") or os.environ.get("VERCEL_ENV"))
+DATA_DIR = Path("/tmp/tapshow-data") if IS_VERCEL else SEED_DATA_DIR
 UPLOADS_DIR = DATA_DIR / "uploads"
 STICKERS_DIR = UPLOADS_DIR / "stickers"
 CAPTURES_DIR = UPLOADS_DIR / "captures"
@@ -110,6 +117,11 @@ LOCK = threading.Lock()
 ROOM_SOCKET_CONNECTIONS: dict[str, dict[str, ServerConnection]] = {}
 WS_SIGNAL_PORT = 8765
 WSS_SIGNAL_PORT = 8766
+
+
+def resolve_data_request_path(request_path: str) -> Path:
+    relative = request_path.removeprefix("/").removeprefix("data/")
+    return DATA_DIR / relative
 
 
 @dataclass
@@ -349,6 +361,8 @@ def room_ws_handler(connection: ServerConnection) -> None:
 
 
 def run_ws_signal_server(host: str = "0.0.0.0", port: int = WS_SIGNAL_PORT, ssl_context: ssl.SSLContext | None = None) -> None:
+    if serve is None:
+        raise RuntimeError("websockets package is not installed")
     with serve(
         room_ws_handler,
         host,
@@ -364,7 +378,11 @@ def ensure_dirs() -> None:
         path.mkdir(parents=True, exist_ok=True)
     for json_file in [TEMPLATES_FILE, CANVAS_FILE, ASSETS_FILE, ROOMS_FILE]:
         if not json_file.exists():
-            json_file.write_text("[]", encoding="utf-8")
+            seed_file = SEED_DATA_DIR / json_file.name
+            if IS_VERCEL and seed_file.exists():
+                json_file.write_text(seed_file.read_text(encoding="utf-8"), encoding="utf-8")
+            else:
+                json_file.write_text("[]", encoding="utf-8")
 
 
 def read_json(path: Path) -> list[dict[str, Any]]:
@@ -499,7 +517,7 @@ def persist_data_url(data_url: str, directory: Path, stem: str) -> str:
     ext = guess_extension(mime)
     path = directory / f"{stem}{ext}"
     path.write_bytes(blob)
-    return f"/{path.relative_to(ROOT).as_posix()}"
+    return f"/data/{path.relative_to(DATA_DIR).as_posix()}"
 
 
 def bbox_from_points(points: list[dict[str, float]], width: int, height: int) -> dict[str, float]:
@@ -741,7 +759,7 @@ class TapShowHandler(SimpleHTTPRequestHandler):
             self.handle_api_get(parsed)
             return
         if parsed.path.startswith("/data/"):
-            return self.serve_local_file(ROOT / parsed.path.lstrip("/"))
+            return self.serve_local_file(resolve_data_request_path(parsed.path))
         if parsed.path == "/" or parsed.path == "":
             self.path = "/index.html"
         return super().do_GET()
@@ -1289,6 +1307,9 @@ def run_server(host: str = "0.0.0.0", port: int = 8000, https_port: int = 8443) 
         print(f"TapShow WS signal server running at wss://{host}:{WSS_SIGNAL_PORT}")
 
     http_server.serve_forever()
+
+
+handler = TapShowHandler
 
 
 if __name__ == "__main__":

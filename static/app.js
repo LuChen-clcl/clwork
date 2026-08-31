@@ -539,6 +539,10 @@ function buildRoomSocketUrl() {
   return `${protocol}//${hostname}:${port}/ws?roomId=${encodeURIComponent(state.multi.roomId)}&userId=${encodeURIComponent(state.multi.userId)}&role=${encodeURIComponent(state.multi.role)}&${query.toString()}`;
 }
 
+function shouldPreferPollingRoomSync() {
+  return window.location.hostname.endsWith(".vercel.app");
+}
+
 async function sendRoomSocketMessage(type, payload, toUserId = state.multi.remoteUserId) {
   if (state.multi.socketConnected && state.multi.socket?.readyState === WebSocket.OPEN) {
     state.multi.socket.send(
@@ -707,6 +711,12 @@ function handleSocketMessage(message) {
 
 function connectRoomSocket() {
   if (!state.multi.roomId || !state.multi.userId || !state.multi.role) return;
+  if (shouldPreferPollingRoomSync()) {
+    state.multi.socketConnected = false;
+    setMultiConnectionState("云端模式：使用轮询同步");
+    startRoomPolling();
+    return;
+  }
   resetMultiSocket();
   const socket = new WebSocket(buildRoomSocketUrl());
   state.multi.socket = socket;
