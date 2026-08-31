@@ -1,0 +1,298 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TapShow MVP</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Nunito:wght@700;800;900&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/styles.css?v=20260524b" />
+  </head>
+  <body>
+    <div class="bg-blobs" aria-hidden="true">
+      <span class="blob blob-violet"></span>
+      <span class="blob blob-pink"></span>
+      <span class="blob blob-blue"></span>
+    </div>
+
+    <div id="generation-overlay" class="generation-overlay" aria-hidden="true">
+      <div class="generation-spell clay-card">
+        <div class="generation-rings" aria-hidden="true">
+          <span class="generation-ring generation-ring-outer"></span>
+          <span class="generation-ring generation-ring-inner"></span>
+          <span class="generation-core"></span>
+        </div>
+        <p class="generation-title sr-only">创意法阵启动中...</p>
+      </div>
+    </div>
+
+    <div class="app-shell">
+      <main class="content">
+        <section class="panel active" id="panel-create">
+          <div class="mobile-create-shell clay-card">
+            <div class="mobile-stage-topbar">
+              <div id="mobile-phase-chip" class="phase-chip">◎</div>
+              <p id="mobile-hint" class="mobile-hint sr-only">准备捕捉灵感</p>
+            </div>
+
+            <section class="mobile-stage-wrap">
+              <div class="camera-stage mobile-camera-stage" id="camera-stage">
+                <video id="camera-feed" autoplay playsinline muted></video>
+                <img id="base-image" alt="底图" />
+                <canvas id="sketch-layer"></canvas>
+                <img id="sticker-preview" alt="贴图预览" />
+                <div id="stage-scrim" class="stage-scrim" aria-hidden="true"></div>
+              </div>
+            </section>
+
+            <div id="brush-toolbar" class="brush-toolbar mobile-brush-toolbar">
+              <div class="brush-slider-wrap">
+                <input id="brush-hue" class="brush-slider" type="range" min="0" max="360" value="12" />
+                <span id="brush-color-preview" class="brush-color-preview"></span>
+              </div>
+            </div>
+
+            <div class="mobile-action-bar">
+              <button id="restart-capture" class="mobile-pill-button mobile-secondary" type="button" aria-label="Retake frame">
+                <span class="tool-icon tool-icon-retake" aria-hidden="true"></span>
+                <span class="mobile-pill-label">重选</span>
+              </button>
+              <button id="capture-photo" class="mobile-pill-button mobile-primary" type="button" aria-label="Capture frame" disabled>
+                <span class="tool-icon tool-icon-capture" aria-hidden="true"></span>
+                <span class="mobile-pill-label">定格</span>
+              </button>
+              <button id="start-sketch" class="mobile-pill-button mobile-secondary" type="button" aria-label="Start sketch">
+                <span class="tool-icon tool-icon-sketch" aria-hidden="true"></span>
+                <span class="mobile-pill-label">确定</span>
+              </button>
+              <button id="clear-sketch" class="mobile-pill-button mobile-secondary" type="button" aria-label="Clear sketch">
+                <span class="tool-icon tool-icon-clear" aria-hidden="true"></span>
+                <span class="mobile-pill-label">重画</span>
+              </button>
+              <button id="generate-sticker" class="mobile-pill-button mobile-primary" type="button" aria-label="Generate sticker" disabled>
+                <span class="tool-icon tool-icon-generate" aria-hidden="true"></span>
+                <span class="mobile-pill-label">施法</span>
+              </button>
+              <button id="save-capture" class="mobile-pill-button mobile-secondary" type="button" aria-label="Save result image" disabled>
+                <span class="tool-icon tool-icon-save-image" aria-hidden="true"></span>
+                <span class="mobile-pill-label">收图</span>
+              </button>
+              <button id="save-sticker" class="mobile-pill-button mobile-secondary" type="button" aria-label="Save sticker" disabled>
+                <span class="tool-icon tool-icon-save-sticker" aria-hidden="true"></span>
+                <span class="mobile-pill-label">收贴</span>
+              </button>
+              <button id="redo-creation" class="mobile-pill-button mobile-primary" type="button" aria-label="Restart creation">
+                <span class="tool-icon tool-icon-restart" aria-hidden="true"></span>
+                <span class="mobile-pill-label">再创</span>
+              </button>
+            </div>
+
+            <section id="mobile-result-candidates" class="mobile-result-candidates mini-section" aria-label="Sticker candidates">
+              <div class="result-candidate-header">
+                <span class="result-candidate-title">挑一张挂上去</span>
+                <span class="result-candidate-hint">点选三张结果中的一张</span>
+              </div>
+              <div id="candidate-list" class="mini-tile-list"></div>
+            </section>
+          </div>
+
+          <div class="sr-only" aria-hidden="true">
+            <video id="preview-feed" autoplay playsinline muted></video>
+            <div id="input-image-list" class="mini-tile-list"></div>
+            <button id="save-template" type="button">保存模板</button>
+            <button id="toggle-static-mode" type="button">静态摆放</button>
+          </div>
+
+          <p id="status-text" class="sr-only">正在准备摄像头</p>
+          <p id="fixed-prompt" class="sr-only"></p>
+          <div id="sticker-meta" class="sr-only"></div>
+          <div id="anchor-buttons" class="sr-only"></div>
+          <span id="tracking-status" class="sr-only">跟踪器未初始化</span>
+        </section>
+
+        <section class="panel" id="panel-multi">
+          <div id="multi-setup-card" class="clay-card multi-setup-card">
+            <div id="multi-setup-entry" class="multi-setup-shell">
+              <div class="multi-entry-hero">
+                <div class="multi-entry-mark" aria-hidden="true">
+                  <div class="panel-glyph panel-glyph-social panel-glyph-entry"></div>
+                </div>
+                <h2 class="multi-entry-title-main">连接更多可能</h2>
+                <p class="multi-entry-subtitle-main">创建或加入，开启你的专属空间</p>
+              </div>
+              <div class="controls controls-compact multi-setup-actions">
+                <button id="multi-entry-create" class="multi-entry-option multi-entry-option-create" type="button" aria-label="Create room">
+                  <span class="multi-entry-icon-ring"><span class="tool-icon tool-icon-plus" aria-hidden="true"></span></span>
+                  <span class="multi-entry-option-title">创建</span>
+                  <span class="multi-entry-option-subtitle">开启新空间</span>
+                </button>
+                <button id="multi-entry-join" class="multi-entry-option multi-entry-option-join" type="button" aria-label="Join room">
+                  <span class="multi-entry-icon-ring"><span class="tool-icon tool-icon-enter" aria-hidden="true"></span></span>
+                  <span class="multi-entry-option-title">加入</span>
+                  <span class="multi-entry-option-subtitle">输入邀请码</span>
+                </button>
+              </div>
+              <div class="sr-only">
+                <button id="multi-create-room" type="button">创建</button>
+              </div>
+            </div>
+
+            <div id="multi-setup-join" class="multi-setup-shell" style="display: none;">
+              <div class="multi-room-title-wrap">
+                <div class="panel-glyph panel-glyph-social" aria-hidden="true"></div>
+                <span class="multi-state-pill">加入</span>
+              </div>
+              <div class="multi-setup-inputs">
+                <input id="multi-display-name" type="text" placeholder="昵称" value="创作者A" />
+                <input id="multi-room-id" type="text" placeholder="房间号" />
+              </div>
+              <div class="controls controls-compact multi-setup-actions">
+                <button id="multi-join-submit" type="button" aria-label="Join room"><span class="tool-icon tool-icon-plus" aria-hidden="true"></span></button>
+              </div>
+              <div class="sr-only">
+                <button id="multi-join-room" type="button">加入</button>
+              </div>
+            </div>
+          </div>
+
+          <div id="multi-workspace-shell">
+            <div id="multi-stage-shell" class="multi-stage-shell" data-phase="live" data-primary-subject="remote">
+            <section class="clay-card multi-room-card multi-room-card-compact">
+              <div class="multi-room-line">
+                <div class="multi-room-title-wrap">
+                  <h3 class="sr-only">同一 Wi‑Fi 双人房间</h3>
+                  <div class="panel-glyph panel-glyph-social" aria-hidden="true"></div>
+                  <span id="multi-connection-state" class="multi-state-pill">未连</span>
+                </div>
+                <div class="controls controls-compact">
+                  <button id="multi-start-camera" type="button" aria-label="Open local camera"><span class="tool-icon tool-icon-camera-mini" aria-hidden="true"></span></button>
+                  <button id="multi-send-frame" type="button" aria-label="Send current frame"><span class="tool-icon tool-icon-send" aria-hidden="true"></span></button>
+                </div>
+              </div>
+
+              <div class="multi-room-line">
+                <div class="meta-chip">用户 <span id="multi-session-name">创作者A</span></div>
+                <div class="meta-chip">房间 <span id="multi-session-room">未建</span></div>
+                <div class="multi-room-meta">
+                  <div class="meta-chip">房间 <span id="multi-room-label">未建</span></div>
+                  <div class="meta-chip">身份 <span id="multi-role-label">未入</span></div>
+                  <div class="meta-chip">对方 <span id="multi-remote-label">未入</span></div>
+                </div>
+              </div>
+            </section>
+
+            <section class="multi-dual-stage">
+              <div id="multi-primary-stage" class="stage-panel clay-card stage-panel-primary">
+                <div class="multi-action-bar">
+                  <div class="controls controls-compact" data-tab2-actions="live">
+                    <button id="multi-start-realtime" type="button" aria-label="Connect realtime video"><span class="tool-icon tool-icon-link" aria-hidden="true"></span><span class="tool-text">连线</span></button>
+                    <button id="multi-refresh-frame" type="button" aria-label="Capture current subject"><span class="tool-icon tool-icon-refresh" aria-hidden="true"></span><span class="tool-text">定格</span></button>
+                  </div>
+                  <div class="controls controls-compact" data-tab2-actions="captured">
+                    <button id="multi-back-to-video" type="button" aria-label="Discard frozen frame"><span class="tool-icon tool-icon-playback" aria-hidden="true"></span><span class="tool-text">返回</span></button>
+                    <button id="multi-confirm-capture" type="button" aria-label="Confirm frozen frame"><span class="tool-icon tool-icon-sketch" aria-hidden="true"></span><span class="tool-text">确定</span></button>
+                  </div>
+                  <div class="controls controls-compact" data-tab2-actions="drawing">
+                    <button id="multi-clear-sketch" type="button" aria-label="Clear remote sketch"><span class="tool-icon tool-icon-clear" aria-hidden="true"></span><span class="tool-text">重画</span></button>
+                    <button id="multi-generate-sticker" class="primary" type="button" aria-label="Generate remote sticker"><span class="tool-icon tool-icon-generate" aria-hidden="true"></span><span class="tool-text">施法</span></button>
+                  </div>
+                  <div class="controls controls-compact" data-tab2-actions="result">
+                    <button id="multi-redo-flow" type="button" aria-label="Restart collaboration flow"><span class="tool-icon tool-icon-restart" aria-hidden="true"></span><span class="tool-text">再创</span></button>
+                    <button id="multi-send-sticker" type="button" aria-label="Send selected sticker"><span class="tool-icon tool-icon-send" aria-hidden="true"></span><span class="tool-text">发送</span></button>
+                  </div>
+                </div>
+
+                <div id="multi-primary-slot" class="multi-stage-slot"></div>
+
+                <div class="mini-section">
+                  <div id="multi-remote-candidate-list" class="mini-tile-list"></div>
+                </div>
+              </div>
+
+              <button id="multi-swap-stage" class="stage-panel clay-card stage-panel-secondary" type="button" aria-label="Swap stages">
+                <div id="multi-secondary-stage" class="multi-stage-slot"></div>
+              </button>
+            </section>
+
+            <div class="multi-stage-source sr-only" aria-hidden="true">
+              <div class="preview-stage subject-stage" id="multi-local-stage" data-subject="local">
+                <video id="multi-local-video" autoplay playsinline muted></video>
+                <img id="multi-local-sticker-preview" alt="收到的贴图挂载预览" />
+              </div>
+
+              <div class="preview-stage subject-stage" id="multi-remote-stage" data-subject="remote">
+                <video id="multi-remote-video" autoplay playsinline muted></video>
+                <img id="multi-remote-frame" alt="对方冻结帧" />
+                <img id="multi-remote-sticker-preview" alt="对方挂载预览" />
+                <canvas id="multi-remote-sketch-layer"></canvas>
+              </div>
+            </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel" id="panel-assets">
+          <div id="asset-top-tabs" class="asset-top-tabs" role="tablist" aria-label="Asset sections">
+            <button class="asset-top-tab active" data-asset-tab="activity" type="button" role="tab" aria-selected="true">
+              <span class="asset-tab-icon asset-tab-icon-activity" aria-hidden="true"></span>
+              <span class="asset-tab-label">活动</span>
+            </button>
+            <button class="asset-top-tab" data-asset-tab="creative" type="button" role="tab" aria-selected="false">
+              <span class="asset-tab-icon asset-tab-icon-creative" aria-hidden="true"></span>
+              <span class="asset-tab-label">创意</span>
+            </button>
+            <button class="asset-top-tab" data-asset-tab="mine" type="button" role="tab" aria-selected="false">
+              <span class="asset-tab-icon asset-tab-icon-mine" aria-hidden="true"></span>
+              <span class="asset-tab-label">我的</span>
+            </button>
+          </div>
+          <div class="asset-grid">
+            <section class="asset-card clay-card active" data-asset-panel="activity">
+              <div id="discover-list" class="tile-list activity-list"></div>
+            </section>
+
+            <section class="asset-card clay-card" data-asset-panel="creative">
+              <div id="mine-templates" class="tile-list sticker-grid"></div>
+            </section>
+
+            <section class="asset-card clay-card" data-asset-panel="mine">
+              <div id="mine-assets" class="tile-list sticker-grid"></div>
+            </section>
+          </div>
+        </section>
+      </main>
+
+      <nav class="bottom-tabs" aria-label="Primary">
+        <button class="tab-button active" data-tab="create" type="button" aria-label="Capture">
+          <span class="tab-icon tab-icon-camera" aria-hidden="true">
+            <span class="tab-camera-body"></span>
+            <span class="tab-camera-lens"></span>
+            <span class="tab-camera-dot"></span>
+          </span>
+        </button>
+        <button class="tab-button" data-tab="multi" type="button" aria-label="Connect">
+          <span class="tab-icon tab-icon-social" aria-hidden="true">
+            <span class="tab-social-head head-a"></span>
+            <span class="tab-social-head head-b"></span>
+            <span class="tab-social-body body-a"></span>
+            <span class="tab-social-body body-b"></span>
+            <span class="tab-social-link"></span>
+          </span>
+        </button>
+        <button class="tab-button" data-tab="assets" type="button" aria-label="Library">
+          <span class="tab-icon tab-icon-library" aria-hidden="true">
+            <span class="tab-library-top"></span>
+            <span class="tab-library-box"></span>
+            <span class="tab-library-slot"></span>
+          </span>
+        </button>
+      </nav>
+    </div>
+
+    <script src="/app.js?v=20260524a" type="module"></script>
+  </body>
+</html>
