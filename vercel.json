@@ -1,14 +1,15 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "functions": {
-    "app.py": {
-      "includeFiles": "{static/**,data/**,model_config.json}"
+    "api/index.py": {
+      "includeFiles": "{app.py,bg_remove.py,static/**,model_config.json}",
+      "excludeFiles": "{data/**,certs/**,.ark_api_key,.gemini_api_key,docs/**,*.pdf,*.png}"
     }
   },
   "rewrites": [
     {
       "source": "/(.*)",
-      "destination": "/app.py"
+      "destination": "/api/index"
     }
   ]
 }
