@@ -259,6 +259,7 @@ button.primary {
 
 #multi-setup-entry {
   width: min(645px, 100%);
+  justify-self: center;
   gap: 58px;
 }
 
